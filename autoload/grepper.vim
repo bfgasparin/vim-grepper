@@ -549,57 +549,45 @@ endfunction
 
 " s:finish_up() {{{1
 function! s:finish_up(flags)
-  let qf = a:flags.quickfix
-  let list = qf ? getqflist() : getloclist(0)
-  let size = len(list)
+  let s:qf = a:flags.quickfix
+  let list = s:qf ? getqflist() : getloclist(0)
+  let s:size = len(list)
 
   call s:restore_errorformat()
 
-  try
-    let title = has('nvim') ? s:cmdline : {'title': s:cmdline}
-    if qf
-      call setqflist(list, 'r', title)
-    else
-      call setloclist(0, list, 'r', title)
-    endif
-  catch /E118/
-  endtry
+try
+  let title = has('nvim') ? s:cmdline : {'title': s:cmdline}
+  if s:qf
+    call setqflist(list, 'r', title)
+  else
+    call setloclist(0, list, 'r', title)
+  endif
+catch /E118/
+endtry
 
-  if size == 0
-    execute (qf ? 'cclose' : 'lclose')
+  if s:size == 0
+    execute (s:qf ? 'cclose' : 'lclose')
     redraw
     echo 'No matches found.'
     return
   endif
 
   if a:flags.jump
-    execute (qf ? 'cfirst' : 'lfirst')
+    execute (s:qf ? 'cfirst' : 'lfirst')
   endif
 
   " Also open if the list contains any invalid entry.
   if a:flags.open || !empty(filter(list, 'v:val.valid == 0'))
-    execute (qf ? 'botright copen' : 'lopen') (size > 10 ? 10 : size)
-    let w:quickfix_title = s:cmdline
-    setlocal nowrap
+
+    call grepper#ShowResults()
 
     if !a:flags.switch
       call feedkeys("\<c-w>p", 'n')
     endif
   endif
 
-  redraw
-  echo printf('Found %d matches.', size)
+  echo printf('Found %d matches.', s:size)
 
-  nnoremap <silent> <buffer> h  <C-W><CR><C-w>K
-  nnoremap <silent> <buffer> H  <C-W><CR><C-w>K<C-w>b
-  nnoremap <silent> <buffer> o  <CR>
-  nnoremap <silent> <buffer> t  <C-w><CR><C-w>T
-  nnoremap <silent> <buffer> T  <C-w><CR><C-w>TgT<C-W><C-W>
-  nnoremap <silent> <buffer> v  <C-w><CR><C-w>H<C-W>b<C-W>J<C-W>t
-
-  exe 'nnoremap <silent> <buffer> e <CR><C-w><C-w>:' . ( qf ? 'c' : 'l' ) .'close<CR>'
-  exe 'nnoremap <silent> <buffer> go <CR>:' . ( qf ? 'c' : 'l' ) . 'open<CR>'
-  exe 'nnoremap <silent> <buffer> q  :' . ( qf ? 'c' : 'l' ) . 'close<CR>'
 
   if a:flags.side
     call s:side(a:flags.quickfix)
@@ -611,6 +599,42 @@ function! s:finish_up(flags)
 endfunction
 
 " }}}1
+
+function! grepper#ShowResults() "{{{
+  execute (s:qf ? 'botright copen' : 'lopen') (s:size > 10 ? 10 : s:size)
+  let w:quickfix_title = s:cmdline
+  setlocal nowrap
+
+  call s:ApplyMappings()
+  redraw
+endfunction "}}}
+
+function! s:ApplyMappings() "{{{
+  nnoremap <buffer> <silent> ? :call <SID>QuickHelp()<CR>
+  nnoremap <silent> <buffer> h  <C-W><CR><C-w>K
+  nnoremap <silent> <buffer> H  <C-W><CR><C-w>K<C-w>b
+  nnoremap <silent> <buffer> o  <CR>
+  nnoremap <silent> <buffer> t  <C-w><CR><C-w>T
+  nnoremap <silent> <buffer> T  <C-w><CR><C-w>TgT<C-W><C-W>
+  nnoremap <silent> <buffer> v  <C-w><CR><C-w>H<C-W>b<C-W>J<C-W>t
+
+  exe 'nnoremap <silent> <buffer> e <CR><C-w><C-w>:' . ( s:qf ? 'c' : 'l' ) .'close<CR>'
+  exe 'nnoremap <silent> <buffer> go <CR>:' . ( s:qf ? 'c' : 'l' ) . 'open<CR>'
+  exe 'nnoremap <silent> <buffer> q  :' . ( s:qf ? 'c' : 'l' ) . 'close<CR>'
+endfunction "}}}
+
+function! s:QuickHelp() "{{{
+  execute 'edit' globpath(&rtp, 'doc/grepper_quick_help.txt')
+
+  silent normal gg
+  setlocal buftype=nofile bufhidden=hide nobuflisted
+  setlocal nomodifiable noswapfile
+  setlocal filetype=help
+  setlocal nonumber norelativenumber nowrap
+  setlocal foldmethod=diff foldlevel=20
+
+  nnoremap <buffer> <silent> ? :q!<CR>:call grepper#ShowResults()<CR>
+endfunction "}}}
 
 " -highlight {{{1
 " s:highlight_query() {{{2

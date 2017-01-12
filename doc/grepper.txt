@@ -332,6 +332,7 @@ Quickfix/Location Window:~
 
 In the quickfix/location window, you can use:
 
+    ?    to toggle the quick help menu
     e    to open file and close the quickfix/location window
     o    to open (same as enter)
     go   to preview file (open but maintain focus on grepper results)
